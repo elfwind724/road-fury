@@ -15,6 +15,7 @@ import type {
   SurvivorState,
 } from '@/types'
 import { GAME_CONFIG, getVehicleConfig, getFacilityConfig } from '@/config'
+import { SKILL_NODES } from '@/config/skillTree'
 
 // 初始资源状态
 const createInitialResources = (): ResourceState => ({
@@ -967,13 +968,22 @@ export const useGameStore = create<GameStore>()(
         const { meta } = get()
         const currentLevel = meta.skillTree[skillId] || 0
         
-        // 简化的技能升级逻辑
-        const costPerLevel = 10 + currentLevel * 5
-        if (meta.apocalypsePoints < costPerLevel) return false
-        if (currentLevel >= 5) return false // 最大5级
+        // 从技能配置获取成本和最大等级
+        const skill = SKILL_NODES.find(s => s.id === skillId)
+        if (!skill) return false
+        
+        const cost = skill.costPerLevel
+        if (meta.apocalypsePoints < cost) return false
+        if (currentLevel >= skill.maxLevel) return false
+        
+        // 检查前置技能
+        for (const prereq of skill.prerequisites) {
+          const prereqLevel = meta.skillTree[prereq] || 0
+          if (prereqLevel < 1) return false
+        }
 
         set((state) => {
-          state.meta.apocalypsePoints -= costPerLevel
+          state.meta.apocalypsePoints -= cost
           state.meta.skillTree[skillId] = currentLevel + 1
         })
         return true
