@@ -55,7 +55,6 @@ export class MainScene extends Phaser.Scene {
 
   private lastZombieSpawn = 0
   private targetLane = 1
-  private isChangingLane = false
   private comboCount = 0
   private lastComboTime = 0
   private gameUpdateTimer = 0
@@ -604,12 +603,10 @@ export class MainScene extends Phaser.Scene {
   }
 
   private changeLane(direction: 'up' | 'down'): void {
-    if (this.isChangingLane) return
     const store = useGameStore.getState()
     store.changeLane(direction)
     const newLane = store.run?.vehicle.position.lane ?? 1
     this.targetLane = newLane
-    this.isChangingLane = true
   }
 
   private scrollRoad(delta: number): void {
@@ -782,11 +779,11 @@ export class MainScene extends Phaser.Scene {
     const currentX = this.vehicle.x
     const diff = targetX - currentX
 
-    if (Math.abs(diff) < 5) {
+    if (Math.abs(diff) < 3) {
       this.vehicle.x = targetX
-      this.isChangingLane = false
     } else {
-      const moveSpeed = 600
+      // 提高移动速度，使变道更流畅
+      const moveSpeed = 1500  // 从600提高到1500
       const move = Math.sign(diff) * Math.min(Math.abs(diff), (moveSpeed * delta) / 1000)
       this.vehicle.x += move
     }
