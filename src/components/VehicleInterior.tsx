@@ -6,9 +6,9 @@
 import { useState, useCallback } from 'react'
 import { useGameStore } from '@/store'
 import { FACILITY_CONFIGS, getFacilityConfig } from '@/config/facilities'
-import { WEAPON_CONFIGS } from '@/config/weapons'
 import { ACCESSORY_CONFIGS, getAccessoryConfig } from '@/config/accessories'
 import type { FacilityState, SurvivorState, ResourceState, WeaponUpgrades, VehicleUpgrades } from '@/types'
+import { WeaponPanel } from './panels/WeaponPanel'
 
 interface VehicleInteriorProps {
   onClose: () => void
@@ -63,7 +63,7 @@ export function VehicleInterior({ onClose }: VehicleInteriorProps) {
   // 处理放置到车内
   const handleDropInVehicle = useCallback((e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault()
-    
+
     const rect = e.currentTarget.getBoundingClientRect()
     const x = ((e.clientX - rect.left) / rect.width) * 100
     const y = ((e.clientY - rect.top) / rect.height) * 100
@@ -113,7 +113,7 @@ export function VehicleInterior({ onClose }: VehicleInteriorProps) {
   const rotateFacility = (facilityId: string) => {
     const facility = facilities.find(f => f.id === facilityId)
     if (!facility) return
-    
+
     const pos = facilityPositions.get(facility.slotId) || { x: 50, y: 50, rotation: 0 }
     const newPositions = new Map(facilityPositions)
     newPositions.set(facility.slotId, { ...pos, rotation: (pos.rotation + 90) % 360 })
@@ -171,7 +171,7 @@ export function VehicleInterior({ onClose }: VehicleInteriorProps) {
           />
         )}
         {activeTab === 'upgrade' && (
-          <UpgradeView 
+          <UpgradeView
             resources={resources}
             weaponUpgrades={run.weaponUpgrades}
             vehicleUpgrades={run.vehicleUpgrades}
@@ -252,8 +252,8 @@ function InteriorWithBuildView({
     { id: 'utility', name: '功能', icon: '🔧' },
   ]
 
-  const filteredFacilities = buildCategory === 'all' 
-    ? FACILITY_CONFIGS 
+  const filteredFacilities = buildCategory === 'all'
+    ? FACILITY_CONFIGS
     : FACILITY_CONFIGS.filter(f => f.category === buildCategory)
 
   return (
@@ -263,7 +263,7 @@ function InteriorWithBuildView({
         <div className="sidebar-toggle" onClick={onToggleBuildPanel}>
           {showBuildPanel ? '◀' : '▶'}
         </div>
-        
+
         {showBuildPanel && (
           <>
             <div className="sidebar-header">🔧 建造</div>
@@ -335,11 +335,11 @@ function InteriorWithBuildView({
           {facilities.map((facility) => {
             const config = getFacilityConfig(facility.type)
             if (!config) return null
-            
-            const pos = facilityPositions.get(facility.slotId) || { 
-              x: 20 + (facilities.indexOf(facility) % 3) * 30, 
+
+            const pos = facilityPositions.get(facility.slotId) || {
+              x: 20 + (facilities.indexOf(facility) % 3) * 30,
               y: 30 + Math.floor(facilities.indexOf(facility) / 3) * 25,
-              rotation: 0 
+              rotation: 0
             }
             const assignedSurvivor = survivors.find(s => s.assignedFacility === facility.id)
             const isDragging = draggingFacilityId === facility.id
@@ -428,7 +428,7 @@ function InteriorWithBuildView({
               <span className="panel-level">Lv.{selectedFac.level}</span>
             </div>
             <p className="panel-desc">{selectedConfig.description}</p>
-            
+
             {/* 分配幸存者 */}
             {selectedConfig.requiresSurvivor && (
               <div className="assign-section">
@@ -524,8 +524,8 @@ function SurvivorsView({
             <div className="survivor-header">
               <div className="survivor-avatar">
                 <span className="avatar-emoji">🧑</span>
-                <div className="survivor-mood" style={{ 
-                  background: survivor.morale > 70 ? '#4CAF50' : survivor.morale > 40 ? '#FF9800' : '#f44336' 
+                <div className="survivor-mood" style={{
+                  background: survivor.morale > 70 ? '#4CAF50' : survivor.morale > 40 ? '#FF9800' : '#f44336'
                 }} />
               </div>
               <div className="survivor-title">
@@ -588,8 +588,8 @@ function SurvivorsView({
                     // 检查技能是否匹配
                     const skillMatch = config.survivorSkillBonus === survivor.skill
                     return (
-                      <option 
-                        key={f.id} 
+                      <option
+                        key={f.id}
                         value={f.id}
                         disabled={hasOtherAssigned}
                       >
@@ -651,21 +651,8 @@ function UpgradeView({
   vehicleType: string
 }) {
   const [upgradeTab, setUpgradeTab] = useState<'weapon' | 'vehicle' | 'accessory'>('weapon')
-  const upgradeWeapon = useGameStore((state) => state.upgradeWeapon)
-  const unlockWeapon = useGameStore((state) => state.unlockWeapon)
   const upgradeVehicleStat = useGameStore((state) => state.upgradeVehicleStat)
   const evolveVehicle = useGameStore((state) => state.evolveVehicle)
-
-  // 武器解锁成本
-  const unlockCosts: Record<string, { scrap: number; parts: number; electronics: number }> = {
-    shotgun: { scrap: 100, parts: 50, electronics: 20 },
-    sniper: { scrap: 150, parts: 80, electronics: 40 },
-    rocket_launcher: { scrap: 200, parts: 100, electronics: 60 },
-    flamethrower: { scrap: 180, parts: 90, electronics: 50 },
-    tesla_coil: { scrap: 250, parts: 120, electronics: 100 },
-    freeze_ray: { scrap: 200, parts: 100, electronics: 80 },
-    laser_turret: { scrap: 300, parts: 150, electronics: 150 },
-  }
 
   // 车辆进化成本
   const evolveCosts: Record<string, { scrap: number; parts: number; electronics: number }> = {
@@ -682,19 +669,19 @@ function UpgradeView({
   return (
     <div className="upgrade-view">
       <div className="upgrade-tabs">
-        <button 
+        <button
           className={`upgrade-tab ${upgradeTab === 'weapon' ? 'active' : ''}`}
           onClick={() => setUpgradeTab('weapon')}
         >
           🔫 武器
         </button>
-        <button 
+        <button
           className={`upgrade-tab ${upgradeTab === 'vehicle' ? 'active' : ''}`}
           onClick={() => setUpgradeTab('vehicle')}
         >
           🚗 改造
         </button>
-        <button 
+        <button
           className={`upgrade-tab ${upgradeTab === 'accessory' ? 'active' : ''}`}
           onClick={() => setUpgradeTab('accessory')}
         >
@@ -703,74 +690,7 @@ function UpgradeView({
       </div>
 
       {upgradeTab === 'weapon' && (
-        <div className="weapon-upgrade-list">
-          {WEAPON_CONFIGS.map(weapon => {
-            const level = weaponUpgrades[weapon.type as keyof WeaponUpgrades] || 0
-            const isUnlocked = level > 0
-            const isMaxLevel = level >= 5
-            const unlockCost = unlockCosts[weapon.type]
-            const upgradeCost = isUnlocked ? {
-              scrap: 50 * level,
-              parts: 30 * level,
-              electronics: 10 * level,
-            } : null
-
-            const canUnlock = !isUnlocked && unlockCost && 
-              resources.scrap >= unlockCost.scrap &&
-              resources.parts >= unlockCost.parts &&
-              resources.electronics >= unlockCost.electronics
-
-            const canUpgrade = isUnlocked && !isMaxLevel && upgradeCost &&
-              resources.scrap >= upgradeCost.scrap &&
-              resources.parts >= upgradeCost.parts &&
-              resources.electronics >= upgradeCost.electronics
-
-            return (
-              <div key={weapon.type} className={`weapon-card ${isUnlocked ? 'unlocked' : 'locked'}`}>
-                <div className="weapon-icon">{weapon.icon}</div>
-                <div className="weapon-info">
-                  <div className="weapon-name">{weapon.name}</div>
-                  <div className="weapon-desc">{weapon.description}</div>
-                  {isUnlocked && (
-                    <div className="weapon-level">
-                      Lv.{level} / 5
-                      <div className="level-bar">
-                        <div className="level-fill" style={{ width: `${(level / 5) * 100}%` }} />
-                      </div>
-                    </div>
-                  )}
-                </div>
-                <div className="weapon-action">
-                  {!isUnlocked && unlockCost && (
-                    <button 
-                      className={`unlock-btn ${canUnlock ? '' : 'disabled'}`}
-                      onClick={() => canUnlock && unlockWeapon(weapon.type)}
-                      disabled={!canUnlock}
-                    >
-                      🔓 解锁
-                      <div className="cost-info">
-                        🔩{unlockCost.scrap} ⚙️{unlockCost.parts} 📱{unlockCost.electronics}
-                      </div>
-                    </button>
-                  )}
-                  {isUnlocked && !isMaxLevel && upgradeCost && (
-                    <button 
-                      className={`upgrade-btn ${canUpgrade ? '' : 'disabled'}`}
-                      onClick={() => canUpgrade && upgradeWeapon(weapon.type)}
-                      disabled={!canUpgrade}
-                    >
-                      ⬆️ 升级
-                      <div className="cost-info">
-                        🔩{upgradeCost.scrap} ⚙️{upgradeCost.parts} 📱{upgradeCost.electronics}
-                      </div>
-                    </button>
-                  )}
-                  {isMaxLevel && <span className="max-level">✅ 满级</span>}
-                </div>
-              </div>
-            )
-          })}
-        </div>
+        <WeaponPanel resources={resources} weaponUpgrades={weaponUpgrades} />
       )}
 
       {upgradeTab === 'vehicle' && (
@@ -795,8 +715,8 @@ function UpgradeView({
                 fabric: Math.floor((stat.baseCost.fabric || 0) * multiplier),
                 fuel: Math.floor((stat.baseCost.fuel || 0) * multiplier),
               }
-              const canUpgrade = !isMaxLevel && 
-                resources.scrap >= cost.scrap && 
+              const canUpgrade = !isMaxLevel &&
+                resources.scrap >= cost.scrap &&
                 (!cost.parts || resources.parts >= cost.parts) &&
                 (!cost.fabric || resources.fabric >= cost.fabric) &&
                 (!cost.fuel || resources.fuel >= cost.fuel)
@@ -821,7 +741,7 @@ function UpgradeView({
                       </div>
                     </div>
                   </div>
-                  <button 
+                  <button
                     className={`stat-upgrade-btn ${canUpgrade ? '' : 'disabled'}`}
                     onClick={() => canUpgrade && upgradeVehicleStat(stat.key as 'engine' | 'armor' | 'tire' | 'fuelTank' | 'durability')}
                     disabled={!canUpgrade || isMaxLevel}
@@ -848,13 +768,12 @@ function UpgradeView({
                   <span className="vehicle-name">{getVehicleName(nextVehicle)}</span>
                 </div>
                 {evolveCosts[nextVehicle] && (
-                  <button 
-                    className={`evolve-btn ${
-                      resources.scrap >= evolveCosts[nextVehicle].scrap &&
+                  <button
+                    className={`evolve-btn ${resources.scrap >= evolveCosts[nextVehicle].scrap &&
                       resources.parts >= evolveCosts[nextVehicle].parts &&
                       resources.electronics >= evolveCosts[nextVehicle].electronics
-                        ? '' : 'disabled'
-                    }`}
+                      ? '' : 'disabled'
+                      }`}
                     onClick={() => evolveVehicle()}
                   >
                     🔄 进化
@@ -894,11 +813,11 @@ function getVehicleEmoji(type: string): string {
 function AccessoryView() {
   const meta = useGameStore((state) => state.meta)
   const equipAccessory = useGameStore((state) => state.equipAccessory)
-  
+
   // 安全检查 - 兼容旧存档
   const unlockedAccessories = meta.unlockedAccessories || ['spike_ram', 'guardrail', 'standard_tire']
   const equippedAccessories = meta.equippedAccessories || { front: 'spike_ram', side: 'guardrail', tire: 'standard_tire' }
-  
+
   const slots = [
     { id: 'front', name: '前部', icon: '🔱' },
     { id: 'side', name: '侧面', icon: '🛡️' },
@@ -987,7 +906,7 @@ function StorageView({ resources }: { resources: ResourceState }) {
         {resourceList.map(res => {
           const value = resources[res.key as keyof ResourceState]
           const percent = Math.min(100, (value / maxCapacity) * 100)
-          
+
           return (
             <div key={res.key} className="resource-card">
               <div className="resource-header">
@@ -995,8 +914,8 @@ function StorageView({ resources }: { resources: ResourceState }) {
                 <span className="resource-name">{res.name}</span>
               </div>
               <div className="resource-bar">
-                <div 
-                  className="resource-fill" 
+                <div
+                  className="resource-fill"
                   style={{ width: `${percent}%`, background: res.color }}
                 />
               </div>

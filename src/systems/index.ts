@@ -8,11 +8,11 @@ export * from './VehicleSystem'
 export * from './VehicleUpgradeSystem'
 export * from './FacilitySystem'
 export * from './SurvivalSystem'
-export { 
-  spawnZombie, 
-  calculateZombieAttack, 
-  processCollision, 
-  getDrops, 
+export {
+  spawnZombie,
+  calculateZombieAttack,
+  processCollision,
+  getDrops,
   canSpawnAtDistance,
   getSpawnWeights,
   type ZombieInstance,
@@ -23,6 +23,7 @@ export * from './MetaSystem'
 export * from './OfflineSystem'
 export * from './EventSystem'
 export * from './WeaponSystem'
+export * from './BossSystem'
 export * from './WaveSystem'
 export * from './LeaderboardSystem'
 export * from './EndlessSystem'

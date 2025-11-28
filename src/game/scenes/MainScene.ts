@@ -59,7 +59,7 @@ export class MainScene extends Phaser.Scene {
   private lastComboTime = 0
   private gameUpdateTimer = 0
   private weaponTimers: Map<string, number> = new Map()
-  
+
   // Boss相关
   private currentBoss: BossSprite | null = null
   private bossHealthBar: Phaser.GameObjects.Graphics | null = null
@@ -104,37 +104,37 @@ export class MainScene extends Phaser.Scene {
     bulletGfx.fillStyle(0xffff00)
     bulletGfx.fillCircle(4, 4, 4)
     bulletGfx.generateTexture('bullet_standard', 8, 8)
-    
+
     // 穿甲弹
     bulletGfx.clear()
     bulletGfx.fillStyle(0x00ffff)
     bulletGfx.fillRect(0, 0, 6, 12)
     bulletGfx.generateTexture('bullet_piercing', 6, 12)
-    
+
     // 爆炸弹
     bulletGfx.clear()
     bulletGfx.fillStyle(0xff6600)
     bulletGfx.fillCircle(6, 6, 6)
     bulletGfx.generateTexture('bullet_explosive', 12, 12)
-    
+
     // 燃烧弹
     bulletGfx.clear()
     bulletGfx.fillStyle(0xff3300)
     bulletGfx.fillCircle(5, 5, 5)
     bulletGfx.generateTexture('bullet_incendiary', 10, 10)
-    
+
     // 冷冻弹
     bulletGfx.clear()
     bulletGfx.fillStyle(0x66ccff)
     bulletGfx.fillCircle(5, 5, 5)
     bulletGfx.generateTexture('bullet_freezing', 10, 10)
-    
+
     // 闪电
     bulletGfx.clear()
     bulletGfx.fillStyle(0xffff00)
     bulletGfx.fillRect(0, 0, 4, 16)
     bulletGfx.generateTexture('bullet_lightning', 4, 16)
-    
+
     bulletGfx.destroy()
   }
 
@@ -160,11 +160,11 @@ export class MainScene extends Phaser.Scene {
     const isBloodMoon = this.isBloodMoonWave(store.run.wave.currentWave)
     const weather = store.run.weather.current
     let spawnInterval = BASE_ZOMBIE_SPAWN_INTERVAL
-    
+
     if (store.run.wave.isActive) {
       spawnInterval = isBloodMoon ? 300 : 500 // 血月时更快
     }
-    
+
     // 天气影响丧尸生成
     // 夜晚：丧尸减少20%（生成间隔增加）
     // 沙尘暴：丧尸减少30%
@@ -173,11 +173,11 @@ export class MainScene extends Phaser.Scene {
     } else if (weather === 'sandstorm') {
       spawnInterval *= 1.3
     }
-    
+
     // 根据距离逐渐增加难度
     const distanceMultiplier = Math.max(0.5, 1 - store.run.distance / 5000)
     spawnInterval *= distanceMultiplier
-    
+
     if (time - this.lastZombieSpawn > spawnInterval) {
       this.spawnZombie()
       // 血月期间有概率同时生成多只
@@ -213,7 +213,7 @@ export class MainScene extends Phaser.Scene {
         this.startWaveWarning(nextWave)
         // 开始波次
         store.startWave(nextWave)
-        
+
         // 检查是否需要生成Boss
         const bossType = getBossForWave(nextWave)
         if (bossType && !this.currentBoss) {
@@ -239,7 +239,7 @@ export class MainScene extends Phaser.Scene {
   private startWaveWarning(waveNumber: number): void {
     const waveConfig = getWaveConfig(waveNumber)
     const isBloodMoon = this.isBloodMoonWave(waveNumber)
-    
+
     if (isBloodMoon) {
       this.waveText.setText(`🌑 血月之夜! 第 ${waveNumber} 波!`)
       this.waveText.setColor('#ff0000')
@@ -250,7 +250,7 @@ export class MainScene extends Phaser.Scene {
       this.waveText.setColor('#ff4444')
     }
     this.waveText.setAlpha(1)
-    
+
     // 闪烁效果
     this.tweens.add({
       targets: this.waveText,
@@ -266,7 +266,7 @@ export class MainScene extends Phaser.Scene {
   private updateActiveWave(_delta: number): void {
     const store = useGameStore.getState()
     if (!store.run?.wave.isActive) return
-    
+
     const progress = Math.floor((1 - store.run.wave.timeRemaining / (getWaveConfig(store.run.wave.currentWave).duration * 1000)) * 100)
     this.waveText.setText(`🌊 第 ${store.run.wave.currentWave} 波 ${progress}%`)
   }
@@ -282,7 +282,7 @@ export class MainScene extends Phaser.Scene {
     const defaultWeaponType = 'machine_gun'
     const defaultConfig = getWeaponConfig(defaultWeaponType)
     const machineGunLevel = weaponUpgrades.machine_gun || 1
-    
+
     if (defaultConfig && machineGunLevel > 0) {
       const defaultStats = getWeaponStatsAtLevel(defaultConfig, machineGunLevel)
       const defaultFireInterval = getFireInterval(defaultStats.fireRate)
@@ -300,7 +300,7 @@ export class MainScene extends Phaser.Scene {
     // 检查其他已解锁的武器
     const unlockedWeapons = Object.entries(weaponUpgrades)
       .filter(([type, level]) => level > 0 && type !== 'machine_gun')
-    
+
     for (const [weaponType, level] of unlockedWeapons) {
       const config = getWeaponConfig(weaponType)
       if (!config) continue
@@ -320,7 +320,7 @@ export class MainScene extends Phaser.Scene {
 
     // 额外炮台设施 - 提供额外火力
     const turrets = store.run.facilities.filter(f => f.type === 'turret' && f.isActive)
-    
+
     for (const turret of turrets) {
       const weaponType = 'machine_gun'
       const config = getWeaponConfig(weaponType)
@@ -351,11 +351,11 @@ export class MainScene extends Phaser.Scene {
       const zombie = z as ZombieSprite
       const dx = zombie.x - vehiclePos.x
       const dy = zombie.y - vehiclePos.y
-      
+
       // 只选择前方的丧尸（y坐标小于车辆，即在屏幕上方）
       // 允许一定的侧向范围
       if (dy > 50) return  // 跳过后方的丧尸
-      
+
       const dist = Math.sqrt(dx * dx + dy * dy)
       if (dist < range && dist < nearestDist) {
         nearest = zombie
@@ -372,7 +372,7 @@ export class MainScene extends Phaser.Scene {
 
     const bulletTexture = `bullet_${config.bulletType}`
     const bullet = this.bullets.create(this.vehicle.x, this.vehicle.y - 40, bulletTexture) as BulletSprite
-    
+
     // 计算方向
     const dx = target.x - bullet.x
     const dy = target.y - bullet.y
@@ -413,11 +413,11 @@ export class MainScene extends Phaser.Scene {
     this.bullets.getChildren().forEach((b) => {
       const bullet = b as BulletSprite
       bullet.bulletData.lifetime -= delta
-      
+
       // 超出屏幕或生命周期结束
-      if (bullet.y < -50 || bullet.y > GAME_HEIGHT + 50 || 
-          bullet.x < -50 || bullet.x > GAME_WIDTH + 50 ||
-          bullet.bulletData.lifetime <= 0) {
+      if (bullet.y < -50 || bullet.y > GAME_HEIGHT + 50 ||
+        bullet.x < -50 || bullet.x > GAME_WIDTH + 50 ||
+        bullet.bulletData.lifetime <= 0) {
         bullet.destroy()
       }
     })
@@ -426,7 +426,7 @@ export class MainScene extends Phaser.Scene {
   private handleBulletHit(bulletObj: Phaser.GameObjects.GameObject, zombieObj: Phaser.GameObjects.GameObject): void {
     const bullet = bulletObj as BulletSprite
     const zombie = zombieObj as ZombieSprite
-    
+
     if (!bullet.bulletData || bullet.bulletData.hitTargets.includes(zombie.zombieId)) return
 
     // 记录命中
@@ -656,13 +656,13 @@ export class MainScene extends Phaser.Scene {
     if (store.run.wave.isActive) {
       const waveBonus = 1 + store.run.wave.currentWave * 0.15
       zombie.currentHealth *= waveBonus
-      
+
       // 血月期间丧尸更强更快
       if (isBloodMoon) {
         zombie.currentHealth *= 1.5
         zombie.speedMultiplier = 1.3
         zombie.setTint(0xff0000) // 血红色
-        
+
         // 血月Boss - 每波生成一个大Boss
         if (!store.run.wave.bossSpawned && Math.random() < 0.1) {
           this.spawnBloodMoonBoss()
@@ -682,7 +682,7 @@ export class MainScene extends Phaser.Scene {
 
     const lane = 1 // Boss在中间车道
     const boss = this.zombies.create(LANE_POSITIONS[lane], -50, 'zombie') as ZombieSprite
-    
+
     boss.zombieConfig = {
       type: 'boss',
       name: '血月巨兽',
@@ -838,14 +838,14 @@ export class MainScene extends Phaser.Scene {
   } {
     const store = useGameStore.getState()
     const equipped = store.meta.equippedAccessories || {}
-    
+
     let crushDamageBonus = 0
     let armorBonus = 0
     let speedBonus = 0
     let zombieDamage = 0
 
     const accessoryIds = [equipped.front, equipped.side, equipped.tire].filter(Boolean)
-    
+
     for (const id of accessoryIds) {
       const config = getAccessoryConfig(id as string)
       if (!config) continue
@@ -879,7 +879,7 @@ export class MainScene extends Phaser.Scene {
   } {
     const store = useGameStore.getState()
     const skillTree = store.meta.skillTree || {}
-    
+
     let crushDamageBonus = 0
     let armorBonus = 0
     let weaponDamageBonus = 0
@@ -887,7 +887,7 @@ export class MainScene extends Phaser.Scene {
     // 遍历技能树计算效果
     for (const [skillId, level] of Object.entries(skillTree)) {
       if (level === 0) continue
-      
+
       const skill = SKILL_NODES.find(s => s.id === skillId)
       if (!skill) continue
 
@@ -1004,6 +1004,58 @@ export class MainScene extends Phaser.Scene {
     }
   }
 
+  private updateBoss(time: number, delta: number): void {
+    const store = useGameStore.getState()
+    if (!store.run) return
+
+    const boss = this.currentBoss
+    if (!boss) return
+
+    // Boss移动 - 同步 Store 状态
+    if (store.run.wave.bossState) {
+      const bossState = store.run.wave.bossState
+
+      // 使用插值平滑移动到 Store 中的位置
+      // Store 中的位置由 BossSystem 计算
+      const targetX = bossState.position.x
+      const targetY = bossState.position.y
+
+      // 简单的线性插值
+      boss.x += (targetX - boss.x) * 0.1
+      boss.y += (targetY - boss.y) * 0.1
+
+      // 同步血量
+      boss.currentHealth = bossState.health
+      boss.maxHealth = bossState.maxHealth
+      boss.isEnraged = bossState.isEnraged
+    } else {
+      // 如果 Store 中没有 Boss 状态，可能是刚生成或者出错了，暂时保持原逻辑作为 fallback
+      boss.y += (50 * boss.speedMultiplier * delta) / 1000
+    }
+
+    // 检查狂暴状态 (视觉效果)
+    if (!boss.isEnraged && boss.currentHealth / boss.maxHealth <= 0.3) {
+      // ... 视觉效果逻辑保持不变，状态由 Store 驱动
+      this.showFloatingText(boss.x, boss.y, '💢 狂暴!', '#ff0000')
+      this.cameras.main.shake(200, 0.02)
+    }
+
+    // 执行Boss技能 (视觉效果)
+    // 实际技能逻辑应该由 BossSystem 处理，这里只负责播放动画
+    // 我们可以监听 Store 中的 cooldowns 变化来触发动画，或者简单地保留当前的计时器逻辑用于视觉
+    if (time - this.lastBossAbilityTime > 3000) {
+      this.executeBossAbility(boss, time)
+    }
+
+    // 更新血条
+    this.updateBossHealthBar()
+
+    // Boss超出屏幕
+    if (boss.y > GAME_HEIGHT + 100) {
+      this.onBossEscape()
+    }
+  }
+
   // Boss战系统
   private spawnBoss(bossType: BossType): void {
     const config = getBossConfig(bossType)
@@ -1012,7 +1064,10 @@ export class MainScene extends Phaser.Scene {
     const store = useGameStore.getState()
     if (!store.run) return
 
-    // 在屏幕上方中央生成Boss
+    // 调用 Store 生成 Boss 数据
+    store.spawnBoss(bossType)
+
+    // 在屏幕上方中央生成Boss Sprite
     const boss = this.physics.add.sprite(GAME_WIDTH / 2, -100, 'zombie') as unknown as BossSprite
     boss.bossConfig = config
     boss.bossId = `boss_${Date.now()}`
@@ -1116,39 +1171,9 @@ export class MainScene extends Phaser.Scene {
     }
   }
 
-  private updateBoss(time: number, delta: number): void {
-    if (!this.currentBoss) return
-
-    const boss = this.currentBoss
-
-    // Boss移动 - 缓慢向下移动
-    boss.y += (50 * boss.speedMultiplier * delta) / 1000
-
-    // 检查狂暴状态
-    if (!boss.isEnraged && boss.currentHealth / boss.maxHealth <= 0.3) {
-      boss.isEnraged = true
-      boss.speedMultiplier *= 1.5
-      this.showFloatingText(boss.x, boss.y, '💢 狂暴!', '#ff0000')
-      this.cameras.main.shake(200, 0.02)
-    }
-
-    // 执行Boss技能
-    if (time - this.lastBossAbilityTime > 3000) {
-      this.executeBossAbility(boss, time)
-    }
-
-    // 更新血条
-    this.updateBossHealthBar()
-
-    // Boss超出屏幕
-    if (boss.y > GAME_HEIGHT + 100) {
-      this.onBossEscape()
-    }
-  }
-
   private executeBossAbility(boss: BossSprite, time: number): void {
     const config = boss.bossConfig
-    
+
     for (const ability of config.abilities) {
       const lastUse = boss.abilityCooldowns.get(ability.name) || 0
       if (time - lastUse < ability.cooldown) continue
@@ -1179,7 +1204,7 @@ export class MainScene extends Phaser.Scene {
 
   private bossCharge(boss: BossSprite, damage: number): void {
     this.showFloatingText(boss.x, boss.y - 30, '⚡ 冲锋!', '#ffff00')
-    
+
     const targetY = this.vehicle.y - 50
     this.tweens.add({
       targets: boss,
@@ -1207,10 +1232,10 @@ export class MainScene extends Phaser.Scene {
 
   private bossAcidSpit(boss: BossSprite, damage: number, radius: number): void {
     this.showFloatingText(boss.x, boss.y - 30, '💚 酸液!', '#00ff00')
-    
+
     // 创建酸液弹
     const acid = this.add.circle(boss.x, boss.y, 15, 0x00ff00, 0.8)
-    
+
     this.tweens.add({
       targets: acid,
       x: this.vehicle.x,
@@ -1226,7 +1251,7 @@ export class MainScene extends Phaser.Scene {
           duration: 500,
           onComplete: () => explosion.destroy()
         })
-        
+
         // 检查是否命中
         const dx = acid.x - this.vehicle.x
         const dy = acid.y - this.vehicle.y
@@ -1235,7 +1260,7 @@ export class MainScene extends Phaser.Scene {
           store.takeDamage(damage)
           this.showFloatingText(this.vehicle.x, this.vehicle.y, `-${damage}`, '#00ff00')
         }
-        
+
         acid.destroy()
       }
     })
@@ -1243,7 +1268,7 @@ export class MainScene extends Phaser.Scene {
 
   private bossSummon(count: number): void {
     this.showFloatingText(GAME_WIDTH / 2, 200, `👻 召唤 ${count} 只丧尸!`, '#ff00ff')
-    
+
     for (let i = 0; i < count; i++) {
       this.time.delayedCall(i * 200, () => {
         this.spawnZombie()
@@ -1253,7 +1278,7 @@ export class MainScene extends Phaser.Scene {
 
   private bossAoeDamage(boss: BossSprite, damage: number, radius: number): void {
     this.showFloatingText(boss.x, boss.y - 30, '💀 死亡光环!', '#4B0082')
-    
+
     // 视觉效果
     const aoe = this.add.circle(boss.x, boss.y, 10, 0x4B0082, 0.5)
     this.tweens.add({
@@ -1263,7 +1288,7 @@ export class MainScene extends Phaser.Scene {
       duration: 1000,
       onComplete: () => aoe.destroy()
     })
-    
+
     // 检查玩家是否在范围内
     const dx = boss.x - this.vehicle.x
     const dy = boss.y - this.vehicle.y
@@ -1276,12 +1301,12 @@ export class MainScene extends Phaser.Scene {
 
   private bossBuffZombies(buffPercent: number, radius: number): void {
     this.showFloatingText(GAME_WIDTH / 2, 200, '🔥 狂暴嚎叫!', '#ff6600')
-    
+
     // 增强范围内所有丧尸
     this.zombies.getChildren().forEach((z) => {
       const zombie = z as ZombieSprite
       if (!this.currentBoss) return
-      
+
       const dx = zombie.x - this.currentBoss.x
       const dy = zombie.y - this.currentBoss.y
       if (Math.sqrt(dx * dx + dy * dy) < radius) {
@@ -1306,7 +1331,7 @@ export class MainScene extends Phaser.Scene {
   private handleBossBulletHit(bulletObj: Phaser.GameObjects.GameObject, bossObj: Phaser.GameObjects.GameObject): void {
     const bullet = bulletObj as BulletSprite
     const boss = bossObj as unknown as BossSprite
-    
+
     if (!bullet.bulletData) return
 
     // 应用伤害
@@ -1390,11 +1415,11 @@ export class MainScene extends Phaser.Scene {
     const waveNumber = store.run.wave.currentWave
     const waveConfig = getWaveConfig(waveNumber)
     const isBloodMoon = this.isBloodMoonWave(waveNumber)
-    
+
     // 恢复正常背景色
     this.cameras.main.setBackgroundColor(0x000000)
     this.waveText.setColor('#ffffff')
-    
+
     // 显示完成提示
     if (isBloodMoon) {
       this.waveText.setText(`🎉 血月之夜结束! 丰厚奖励!`)
@@ -1411,7 +1436,7 @@ export class MainScene extends Phaser.Scene {
 
     // 发放奖励 - 血月奖励翻倍
     const rewardMultiplier = isBloodMoon ? 3 : 1
-    
+
     for (const reward of waveConfig.rewards) {
       const amount = reward.amount * rewardMultiplier
       if (reward.type === 'resource' && reward.resourceType) {
@@ -1432,7 +1457,7 @@ export class MainScene extends Phaser.Scene {
 
     // 完成当前波次并准备下一波
     store.completeWave()
-    
+
     // 显示下一波预告
     const nextWave = waveNumber + 1
     setTimeout(() => {

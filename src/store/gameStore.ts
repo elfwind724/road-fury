@@ -16,6 +16,8 @@ import type {
 } from '@/types'
 import { GAME_CONFIG, getVehicleConfig, getFacilityConfig } from '@/config'
 import { SKILL_NODES } from '@/config/skillTree'
+import { updateBossBehavior } from '@/systems/BossSystem'
+import { createBoss } from '@/systems/WaveSystem'
 
 // 初始资源状态
 const createInitialResources = (): ResourceState => ({
@@ -164,7 +166,7 @@ function getSurvivorSkillMatch(skill: string, facilityType: string): boolean {
     engineer: ['solar_panel', 'battery', 'workbench'],  // 工程师 -> 太阳能、电池、工作台
     soldier: ['turret', 'storage'],                     // 军人 -> 炮台、仓库
   }
-  
+
   const matchingFacilities = skillFacilityMap[skill] || []
   return matchingFacilities.includes(facilityType)
 }
@@ -172,13 +174,13 @@ function getSurvivorSkillMatch(skill: string, facilityType: string): boolean {
 // 计算实际资源容量（基础容量 + 仓库设施加成）
 function calculateResourceCapacity(baseCapacity: number, facilities: { type: string; level: number; isActive: boolean }[]): number {
   let bonusCapacity = 0
-  
+
   for (const facility of facilities) {
     if (!facility.isActive) continue
-    
+
     const config = getFacilityConfig(facility.type)
     if (!config?.effects) continue
-    
+
     for (const effect of config.effects) {
       if (effect.type === 'storage') {
         // 仓库效果随等级提升：基础值 * (1 + 0.5 * (等级-1))
@@ -187,7 +189,7 @@ function calculateResourceCapacity(baseCapacity: number, facilities: { type: str
       }
     }
   }
-  
+
   return baseCapacity + bonusCapacity
 }
 
@@ -234,6 +236,7 @@ interface GameActions {
   startWave: (waveNumber: number) => void
   updateWave: (deltaMs: number) => void
   completeWave: () => void
+  spawnBoss: (bossType: string) => void
 
   // 武器升级系统
   upgradeWeapon: (weaponType: string) => boolean
@@ -630,7 +633,7 @@ export const useGameStore = create<GameStore>()(
             if (assignedSurvivor) {
               // 基础幸存者加成 20%
               let survivorBonus = 0.2
-              
+
               // 技能匹配加成
               const skillMatch = getSurvivorSkillMatch(assignedSurvivor.skill, facility.type)
               if (skillMatch) {
@@ -638,11 +641,11 @@ export const useGameStore = create<GameStore>()(
                 const skillLevel = (assignedSurvivor as any).skillLevel || 1
                 survivorBonus += 0.3 + skillLevel * 0.1
               }
-              
+
               // 士气影响效率
               const moraleMultiplier = assignedSurvivor.morale / 100
               survivorBonus *= moraleMultiplier
-              
+
               efficiency *= (1 + survivorBonus)
             }
 
@@ -687,6 +690,19 @@ export const useGameStore = create<GameStore>()(
             if (s.hunger <= 0) s.health = Math.max(0, s.health - 5 * deltaHours)
             if (s.thirst <= 0) s.health = Math.max(0, s.health - 10 * deltaHours)
           })
+
+          // 更新Boss行为
+          if (state.run.wave.bossSpawned && !state.run.wave.bossDefeated && state.run.wave.bossState) {
+            // 构建临时的 vehicleState
+            const vehicleState = state.run.vehicle
+
+            state.run.wave.bossState = updateBossBehavior(
+              state.run.wave.bossState,
+              vehicleState,
+              deltaMs,
+              Date.now()
+            )
+          }
 
           state.run.lastUpdateTime = Date.now()
         })
@@ -741,6 +757,21 @@ export const useGameStore = create<GameStore>()(
           state.run.wave.eliteSpawned = false
           state.run.wave.bossSpawned = false
           state.run.wave.bossDefeated = false
+          state.run.wave.bossState = undefined
+        })
+      },
+
+      // 生成Boss
+      spawnBoss: (bossType: string) => {
+        set((state) => {
+          if (!state.run) return
+
+          const bossState = createBoss(bossType)
+          if (bossState) {
+            state.run.wave.bossState = bossState
+            state.run.wave.bossSpawned = true
+            state.run.wave.bossDefeated = false
+          }
         })
       },
 
@@ -762,8 +793,8 @@ export const useGameStore = create<GameStore>()(
 
         // 检查资源
         if (run.resources.scrap < cost.scrap ||
-            run.resources.parts < cost.parts ||
-            run.resources.electronics < cost.electronics) {
+          run.resources.parts < cost.parts ||
+          run.resources.electronics < cost.electronics) {
           return false
         }
 
@@ -772,7 +803,7 @@ export const useGameStore = create<GameStore>()(
           state.run.resources.scrap -= cost.scrap
           state.run.resources.parts -= cost.parts
           state.run.resources.electronics -= cost.electronics
-          ;(state.run.weaponUpgrades as Record<string, number>)[weaponType] = currentLevel + 1
+            ; (state.run.weaponUpgrades as Record<string, number>)[weaponType] = currentLevel + 1
         })
         return true
       },
@@ -800,8 +831,8 @@ export const useGameStore = create<GameStore>()(
         if (!cost) return false
 
         if (run.resources.scrap < cost.scrap ||
-            run.resources.parts < cost.parts ||
-            run.resources.electronics < cost.electronics) {
+          run.resources.parts < cost.parts ||
+          run.resources.electronics < cost.electronics) {
           return false
         }
 
@@ -810,7 +841,7 @@ export const useGameStore = create<GameStore>()(
           state.run.resources.scrap -= cost.scrap
           state.run.resources.parts -= cost.parts
           state.run.resources.electronics -= cost.electronics
-          ;(state.run.weaponUpgrades as Record<string, number>)[weaponType] = 1
+            ; (state.run.weaponUpgrades as Record<string, number>)[weaponType] = 1
         })
         return true
       },
@@ -836,7 +867,7 @@ export const useGameStore = create<GameStore>()(
         if (!run) return false
 
         const currentLevel = run.vehicleUpgrades[stat as keyof typeof run.vehicleUpgrades] || 0
-        
+
         // 各属性上限
         const maxLevels: Record<string, number> = {
           engine: 10,      // 速度+5%/级
@@ -877,15 +908,15 @@ export const useGameStore = create<GameStore>()(
 
         set((state) => {
           if (!state.run) return
-          
+
           // 消耗资源
           state.run.resources.scrap -= cost.scrap
           if (cost.parts > 0) state.run.resources.parts -= cost.parts
           if (cost.fabric > 0) state.run.resources.fabric -= cost.fabric
           if (cost.fuel > 0) state.run.resources.fuel -= cost.fuel
-          
-          // 升级等级
-          ;(state.run.vehicleUpgrades as Record<string, number>)[stat] = currentLevel + 1
+
+            // 升级等级
+            ; (state.run.vehicleUpgrades as Record<string, number>)[stat] = currentLevel + 1
 
           // 应用升级效果 - 按设计文档
           switch (stat) {
@@ -925,7 +956,7 @@ export const useGameStore = create<GameStore>()(
         if (currentIndex === -1 || currentIndex >= vehicleOrder.length - 1) return false
 
         const nextType = vehicleOrder[currentIndex + 1]
-        
+
         // 进化成本
         const evolveCosts: Record<string, { scrap: number; parts: number; electronics: number }> = {
           van: { scrap: 500, parts: 200, electronics: 50 },
@@ -938,8 +969,8 @@ export const useGameStore = create<GameStore>()(
         if (!cost) return false
 
         if (run.resources.scrap < cost.scrap ||
-            run.resources.parts < cost.parts ||
-            run.resources.electronics < cost.electronics) {
+          run.resources.parts < cost.parts ||
+          run.resources.electronics < cost.electronics) {
           return false
         }
 
@@ -967,15 +998,15 @@ export const useGameStore = create<GameStore>()(
       upgradeSkill: (skillId: string) => {
         const { meta } = get()
         const currentLevel = meta.skillTree[skillId] || 0
-        
+
         // 从技能配置获取成本和最大等级
         const skill = SKILL_NODES.find(s => s.id === skillId)
         if (!skill) return false
-        
+
         const cost = skill.costPerLevel
         if (meta.apocalypsePoints < cost) return false
         if (currentLevel >= skill.maxLevel) return false
-        
+
         // 检查前置技能
         for (const prereq of skill.prerequisites) {
           const prereqLevel = meta.skillTree[prereq] || 0
@@ -1064,7 +1095,7 @@ export const useGameStore = create<GameStore>()(
           }
           const dur = durations[newWeather] || { min: 4, max: 4 }
           const hours = dur.min + Math.random() * (dur.max - dur.min)
-          
+
           state.run.weather.current = newWeather
           state.run.weather.timeRemaining = hours * 60 * 60 * 1000
         })

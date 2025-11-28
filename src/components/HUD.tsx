@@ -14,7 +14,7 @@ export function HUD() {
   // 检查是否有幸存者需要关注
   const hungryCount = run.survivors.filter((s) => s.hunger < 30).length
   const thirstyCount = run.survivors.filter((s) => s.thirst < 30).length
-  
+
   // 检查是否是血月
   const isBloodMoon = run.wave.currentWave > 0 && run.wave.currentWave % BLOOD_MOON_INTERVAL === 0
 
@@ -33,13 +33,31 @@ export function HUD() {
         <div className={`wave-indicator ${isBloodMoon ? 'blood-moon' : ''}`}>
           {isBloodMoon ? '🌑 血月之夜!' : `🌊 第 ${run.wave.currentWave} 波`}
           <div className="wave-progress">
-            <div 
-              className="wave-progress-fill" 
-              style={{ 
+            <div
+              className="wave-progress-fill"
+              style={{
                 width: `${Math.max(0, 100 - (run.wave.timeRemaining / 60000) * 100)}%`,
                 background: isBloodMoon ? '#ff0000' : '#fff'
               }}
             />
+          </div>
+        </div>
+      )}
+
+      {/* Boss血条 */}
+      {run.wave.bossSpawned && !run.wave.bossDefeated && run.wave.bossState && (
+        <div className="boss-health-bar">
+          <div className="boss-name">⚠️ {run.wave.bossState.type.toUpperCase()} BOSS ⚠️</div>
+          <div className="health-track">
+            <div
+              className="health-fill"
+              style={{
+                width: `${(run.wave.bossState.health / run.wave.bossState.maxHealth) * 100}%`
+              }}
+            />
+          </div>
+          <div className="health-text">
+            {Math.ceil(run.wave.bossState.health)} / {run.wave.bossState.maxHealth}
           </div>
         </div>
       )}
@@ -70,6 +88,12 @@ export function HUD() {
         <span className="ammo-icon">🔫</span>
         <span className="ammo-value">{Math.floor(run.resources.ammo)}</span>
         {run.resources.ammo < 10 && <span className="ammo-warning">!</span>}
+      </div>
+
+      {/* 能量显示 */}
+      <div className="energy-indicator">
+        <span className="energy-icon">⚡</span>
+        <span className="energy-value">{Math.floor(run.resources.energy)}</span>
       </div>
 
       {/* 武器等级显示 */}
@@ -273,14 +297,85 @@ export function HUD() {
           50% { opacity: 0.3; }
         }
 
-        .weapon-level {
+        .energy-indicator {
           position: absolute;
           top: 160px;
           right: 10px;
           background: rgba(0, 0, 0, 0.6);
           padding: 4px 10px;
           border-radius: 12px;
+          font-size: 14px;
+          display: flex;
+          align-items: center;
+          gap: 4px;
+        }
+
+        .energy-icon {
+          font-size: 14px;
+          color: #FFD700;
+        }
+
+        .energy-value {
+          font-weight: bold;
+          min-width: 24px;
+        }
+
+        .weapon-level {
+          position: absolute;
+          top: 190px;
+          right: 10px;
+          background: rgba(0, 0, 0, 0.6);
+          padding: 4px 10px;
+          border-radius: 12px;
           font-size: 12px;
+        }
+
+        .boss-health-bar {
+          position: absolute;
+          top: 190px;
+          left: 50%;
+          transform: translateX(-50%);
+          width: 200px;
+          background: rgba(0, 0, 0, 0.8);
+          padding: 8px;
+          border-radius: 8px;
+          border: 2px solid #ff0000;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 4px;
+          z-index: 100;
+        }
+
+        .boss-name {
+          color: #ff0000;
+          font-weight: bold;
+          font-size: 14px;
+          animation: pulse 1s infinite;
+        }
+
+        .health-track {
+          width: 100%;
+          height: 8px;
+          background: #333;
+          border-radius: 4px;
+          overflow: hidden;
+        }
+
+        .health-fill {
+          height: 100%;
+          background: #ff0000;
+          transition: width 0.2s;
+        }
+
+        .health-text {
+          font-size: 10px;
+          color: #fff;
+        }
+
+        @keyframes pulse {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.7; }
         }
       `}</style>
     </div>

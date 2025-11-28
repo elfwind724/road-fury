@@ -6,10 +6,10 @@ import type { ResourceType } from './resource'
 import type { ZombieType, BossAbilityEffect } from './zombie'
 
 // Boss 类型 - 扩展
-export type BossType = 
-  | 'tank' 
-  | 'spitter' 
-  | 'screamer' 
+export type BossType =
+  | 'tank'
+  | 'spitter'
+  | 'screamer'
   | 'necromancer'
   | 'juggernaut'
   | 'hunter'
@@ -57,6 +57,7 @@ export interface WaveState {
   eliteSpawned: boolean
   bossSpawned: boolean
   bossDefeated: boolean
+  bossState?: BossState
   isWarning: boolean
   warningTimeRemaining: number
 }
