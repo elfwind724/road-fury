@@ -33,12 +33,12 @@ export const ZOMBIE_CONFIGS: ZombieConfig[] = [
   },
   {
     type: 'elite',
-    health: 100,
-    damage: 50,
-    speed: 1.5,
+    health: 60,           // 降低血量 100->60，更容易击杀
+    damage: 40,           // 稍微降低伤害 50->40
+    speed: 1.3,           // 稍微降低速度 1.5->1.3
     damageModifier: 1.2,
-    spawnWeight: 10,
-    minDistance: 500,
+    spawnWeight: 8,       // 降低生成权重 10->8
+    minDistance: 800,     // 提高出现距离 500->800
     drops: [
       { type: 'electronics', min: 5, max: 10, chance: 1.0 },
       { type: 'parts', min: 10, max: 20, chance: 0.7 },

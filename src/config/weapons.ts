@@ -45,19 +45,19 @@ export const WEAPON_CONFIGS: WeaponConfig[] = [
   {
     type: 'machine_gun',
     name: '机枪',
-    description: '高射速低伤害，适合清理小型丧尸',
+    description: '高射速中等伤害，适合清理各类丧尸',
     icon: '🔫',
-    baseDamage: 5,
-    fireRate: 8,
-    range: 300,
+    baseDamage: 12,       // 提高基础伤害 5->12
+    fireRate: 6,          // 稍微降低射速 8->6，更稳定
+    range: 350,           // 增加射程 300->350
     bulletType: 'standard',
-    bulletSpeed: 800,
-    bulletSize: 4,
+    bulletSpeed: 1000,    // 提高子弹速度 800->1000
+    bulletSize: 5,        // 稍微增大子弹 4->5
     ammoPerShot: 1,
     energyPerShot: 0.5,
     maxLevel: 5,
-    damagePerLevel: 2,
-    fireRatePerLevel: 1,
+    damagePerLevel: 4,    // 提高每级伤害加成 2->4
+    fireRatePerLevel: 0.8,
   },
   {
     type: 'shotgun',

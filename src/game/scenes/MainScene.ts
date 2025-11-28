@@ -351,6 +351,11 @@ export class MainScene extends Phaser.Scene {
       const zombie = z as ZombieSprite
       const dx = zombie.x - vehiclePos.x
       const dy = zombie.y - vehiclePos.y
+      
+      // 只选择前方的丧尸（y坐标小于车辆，即在屏幕上方）
+      // 允许一定的侧向范围
+      if (dy > 50) return  // 跳过后方的丧尸
+      
       const dist = Math.sqrt(dx * dx + dy * dy)
       if (dist < range && dist < nearestDist) {
         nearest = zombie
