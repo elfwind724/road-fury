@@ -817,7 +817,10 @@ export class MainScene extends Phaser.Scene {
       const baseArmor = store.run.vehicle.stats.armor
       const armorBonus = accessoryEffects.armorBonus + skillEffects.armorBonus
       const totalArmor = baseArmor + armorBonus
-      const vehicleDamage = Math.max(0, config.damage - totalArmor)
+      // 护甲减伤公式：伤害 = 基础伤害 * (100 / (100 + 护甲))
+      // 这样护甲不会完全免疫伤害，但会显著减少
+      const damageReduction = 100 / (100 + totalArmor)
+      const vehicleDamage = Math.max(1, Math.floor(config.damage * damageReduction))
       store.takeDamage(vehicleDamage)
       this.showFloatingText(zombieSprite.x, zombieSprite.y, `-${vehicleDamage}`, '#ff4444')
       zombieSprite.destroy()

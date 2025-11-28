@@ -8,7 +8,7 @@ export const ZOMBIE_CONFIGS: ZombieConfig[] = [
   {
     type: 'normal',
     health: 10,
-    damage: 5,
+    damage: 15,  // 提高基础伤害
     speed: 1,
     damageModifier: 1.0,
     spawnWeight: 70,
@@ -21,7 +21,7 @@ export const ZOMBIE_CONFIGS: ZombieConfig[] = [
   {
     type: 'fat',
     health: 50,
-    damage: 15,
+    damage: 30,  // 提高伤害
     speed: 0.5,
     damageModifier: 0.8,
     spawnWeight: 20,
@@ -33,7 +33,7 @@ export const ZOMBIE_CONFIGS: ZombieConfig[] = [
   {
     type: 'elite',
     health: 100,
-    damage: 25,
+    damage: 50,  // 提高伤害
     speed: 1.5,
     damageModifier: 1.2,
     spawnWeight: 10,
