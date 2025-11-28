@@ -1,261 +1,235 @@
 /**
- * 路况事件系统
- * 负责随机事件触发、天气效果、路障处理
+ * 事件系统
+ * 负责随机事件的触发、处理和效果应用
  */
 
-import type { ResourceState } from '@/types'
+import type { GameEvent, EventChoice, EventEffect, EventState } from '@/types/event'
+import type { ResourceState, SurvivorState } from '@/types'
+import { getAvailableEvents, selectRandomEvent } from '@/config/events'
 
-// 天气类型
-export type WeatherType = 'sunny' | 'rainy' | 'foggy' | 'stormy'
+// 事件触发间隔（毫秒）
+const EVENT_INTERVAL_MIN = 60000   // 最少1分钟
+const EVENT_INTERVAL_MAX = 180000  // 最多3分钟
 
-// 事件类型
-export type EventType = 'encounter' | 'loot' | 'danger' | 'weather' | 'roadblock'
-
-// 事件配置
-export interface GameEvent {
-  id: string
-  type: EventType
-  name: string
-  description: string
-  minDistance: number
-  weight: number
-  options: EventOption[]
-}
-
-export interface EventOption {
-  id: string
-  text: string
-  outcome: EventOutcome
-}
-
-export interface EventOutcome {
-  type: 'resource' | 'damage' | 'survivor' | 'nothing'
-  value?: number | Partial<ResourceState>
-  message: string
-}
-
-// 天气效果
-export interface WeatherEffect {
-  weather: WeatherType
-  facilityModifiers: Record<string, number>
-  description: string
-}
-
-// 路障配置
-export interface Roadblock {
-  id: string
-  name: string
-  requiredPower: number
-  alternativeAction?: string
-  reward?: Partial<ResourceState>
-}
-
-// 天气效果表
-const WEATHER_EFFECTS: WeatherEffect[] = [
-  {
-    weather: 'sunny',
-    facilityModifiers: { solar_panel: 1.5 },
-    description: '晴天，太阳能板效率提升',
-  },
-  {
-    weather: 'rainy',
-    facilityModifiers: { solar_panel: 0.5, rain_collector: 2.0 },
-    description: '雨天，太阳能板效率降低，雨水收集器效率提升',
-  },
-  {
-    weather: 'foggy',
-    facilityModifiers: {},
-    description: '雾天，视野受限',
-  },
-  {
-    weather: 'stormy',
-    facilityModifiers: { solar_panel: 0, wind_turbine: 2.0 },
-    description: '暴风雨，太阳能板停止工作，风力发电机效率提升',
-  },
-]
-
-// 默认事件池
-const DEFAULT_EVENTS: GameEvent[] = [
-  {
-    id: 'abandoned_car',
-    type: 'loot',
-    name: '废弃车辆',
-    description: '路边有一辆废弃的车辆，看起来还有些零件可以拆卸。',
-    minDistance: 0,
-    weight: 30,
-    options: [
-      {
-        id: 'search',
-        text: '搜索车辆',
-        outcome: { type: 'resource', value: { scrap: 20, parts: 10 }, message: '你找到了一些有用的零件！' },
-      },
-      {
-        id: 'ignore',
-        text: '继续前进',
-        outcome: { type: 'nothing', message: '你决定不浪费时间。' },
-      },
-    ],
-  },
-  {
-    id: 'survivor_signal',
-    type: 'encounter',
-    name: '求救信号',
-    description: '你收到了附近的求救信号。',
-    minDistance: 100,
-    weight: 20,
-    options: [
-      {
-        id: 'help',
-        text: '前去救援',
-        outcome: { type: 'survivor', value: 1, message: '你救下了一名幸存者！' },
-      },
-      {
-        id: 'ignore',
-        text: '忽略信号',
-        outcome: { type: 'nothing', message: '你选择了安全第一。' },
-      },
-    ],
-  },
-]
-
-
-/**
- * 从事件池中选择事件
- */
-export function selectEvent(
-  distance: number,
-  events: GameEvent[] = DEFAULT_EVENTS
-): GameEvent | null {
-  // 过滤可用事件
-  const availableEvents = events.filter(e => e.minDistance <= distance)
-  if (availableEvents.length === 0) return null
-  
-  // 按权重随机选择
-  const totalWeight = availableEvents.reduce((sum, e) => sum + e.weight, 0)
-  let random = Math.random() * totalWeight
-  
-  for (const event of availableEvents) {
-    random -= event.weight
-    if (random <= 0) {
-      return event
-    }
+// 初始事件状态
+export function createInitialEventState(): EventState {
+  return {
+    currentEvent: null,
+    eventHistory: [],
+    lastEventTime: Date.now(),
+    eventCooldowns: {}
   }
+}
+
+// 检查是否应该触发事件
+export function shouldTriggerEvent(
+  lastEventTime: number,
+  currentTime: number,
+  isRunning: boolean
+): boolean {
+  if (!isRunning) return false
   
-  return availableEvents[0]
+  const timeSinceLastEvent = currentTime - lastEventTime
+  const minInterval = EVENT_INTERVAL_MIN
+  
+  if (timeSinceLastEvent < minInterval) return false
+  
+  // 随时间增加触发概率
+  const probability = Math.min(0.8, (timeSinceLastEvent - minInterval) / EVENT_INTERVAL_MAX)
+  return Math.random() < probability
 }
 
-/**
- * 触发事件
- */
-export function triggerEvent(
+// 触发随机事件
+export function triggerRandomEvent(
   distance: number,
-  events?: GameEvent[]
+  survivors: SurvivorState[],
+  weather: string,
+  facilities: string[],
+  eventState: EventState
 ): GameEvent | null {
-  return selectEvent(distance, events)
+  const currentTime = Date.now()
+  
+  const availableEvents = getAvailableEvents(
+    distance,
+    survivors.length,
+    weather,
+    facilities,
+    eventState.eventHistory,
+    eventState.eventCooldowns,
+    currentTime
+  )
+  
+  return selectRandomEvent(availableEvents)
 }
 
-/**
- * 应用事件结果
- */
-export function applyEventOutcome(
-  outcome: EventOutcome,
-  resources: ResourceState
-): { resources: ResourceState; message: string } {
-  if (outcome.type === 'resource' && outcome.value) {
-    const newResources = { ...resources }
-    const resourceValue = outcome.value as Partial<ResourceState>
-    
-    for (const [key, value] of Object.entries(resourceValue)) {
-      if (value) {
-        newResources[key as keyof ResourceState] += value
+// 检查选项是否可用
+export function isChoiceAvailable(
+  choice: EventChoice,
+  resources: ResourceState,
+  survivors: number,
+  facilities: string[]
+): boolean {
+  if (!choice.requirements) return true
+  
+  const req = choice.requirements
+  
+  // 检查资源需求
+  if (req.resources) {
+    for (const [key, value] of Object.entries(req.resources)) {
+      if (resources[key as keyof ResourceState] < value) {
+        return false
       }
     }
+  }
+  
+  // 检查幸存者数量
+  if (req.survivors && survivors < req.survivors) {
+    return false
+  }
+  
+  // 检查设施需求
+  if (req.facility && !facilities.includes(req.facility)) {
+    return false
+  }
+  
+  return true
+}
+
+// 应用事件效果
+export function applyEventEffects(
+  effects: EventEffect[],
+  resources: ResourceState,
+  vehicleDurability: number,
+  survivors: SurvivorState[]
+): {
+  resources: ResourceState
+  vehicleDurability: number
+  survivors: SurvivorState[]
+  moraleChange: number
+  spawnZombies: number
+  weatherChange: string | null
+} {
+  const newResources = { ...resources }
+  let newDurability = vehicleDurability
+  let newSurvivors = [...survivors]
+  let moraleChange = 0
+  let spawnZombies = 0
+  let weatherChange: string | null = null
+  
+  for (const effect of effects) {
+    // 检查概率
+    if (effect.probability && Math.random() * 100 > effect.probability) {
+      continue
+    }
     
-    return { resources: newResources, message: outcome.message }
-  }
-  
-  return { resources, message: outcome.message }
-}
-
-/**
- * 获取天气效果
- */
-export function getWeatherEffect(weather: WeatherType): WeatherEffect | undefined {
-  return WEATHER_EFFECTS.find(w => w.weather === weather)
-}
-
-/**
- * 应用天气效果到设施效率
- */
-export function applyWeatherToFacility(
-  facilityType: string,
-  baseEfficiency: number,
-  weather: WeatherType
-): number {
-  const effect = getWeatherEffect(weather)
-  if (!effect) return baseEfficiency
-  
-  const modifier = effect.facilityModifiers[facilityType]
-  if (modifier === undefined) return baseEfficiency
-  
-  return baseEfficiency * modifier
-}
-
-/**
- * 检查是否能通过路障
- */
-export function canPassRoadblock(
-  vehiclePower: number,
-  requiredPower: number
-): boolean {
-  return vehiclePower >= requiredPower
-}
-
-/**
- * 处理路障
- */
-export function processRoadblock(
-  roadblock: Roadblock,
-  vehiclePower: number
-): { passed: boolean; reward?: Partial<ResourceState> } {
-  const passed = canPassRoadblock(vehiclePower, roadblock.requiredPower)
-  
-  return {
-    passed,
-    reward: passed ? roadblock.reward : undefined,
-  }
-}
-
-/**
- * 随机天气变化
- */
-export function randomWeather(): WeatherType {
-  const weathers: WeatherType[] = ['sunny', 'rainy', 'foggy', 'stormy']
-  const weights = [50, 25, 15, 10]
-  
-  const totalWeight = weights.reduce((a, b) => a + b, 0)
-  let random = Math.random() * totalWeight
-  
-  for (let i = 0; i < weathers.length; i++) {
-    random -= weights[i]
-    if (random <= 0) {
-      return weathers[i]
+    switch (effect.type) {
+      case 'resource':
+        if (effect.target) {
+          const key = effect.target as keyof ResourceState
+          newResources[key] = Math.max(0, newResources[key] + effect.value)
+        }
+        break
+        
+      case 'damage':
+        newDurability = Math.max(0, newDurability - effect.value)
+        break
+        
+      case 'health':
+        // 对所有幸存者造成伤害
+        newSurvivors = newSurvivors.map(s => ({
+          ...s,
+          health: Math.max(0, Math.min(100, s.health + effect.value))
+        }))
+        break
+        
+      case 'morale':
+        moraleChange += effect.value
+        break
+        
+      case 'survivor':
+        // 添加幸存者的逻辑在外部处理
+        break
+        
+      case 'spawn_zombie':
+        spawnZombies += effect.value
+        break
+        
+      case 'weather':
+        weatherChange = effect.target || null
+        break
     }
   }
   
-  return 'sunny'
+  // 应用士气变化
+  if (moraleChange !== 0) {
+    newSurvivors = newSurvivors.map(s => ({
+      ...s,
+      morale: Math.max(0, Math.min(100, s.morale + moraleChange))
+    }))
+  }
+  
+  return {
+    resources: newResources,
+    vehicleDurability: newDurability,
+    survivors: newSurvivors,
+    moraleChange,
+    spawnZombies,
+    weatherChange
+  }
 }
 
-/**
- * 获取默认事件池（用于测试）
- */
-export function getDefaultEvents(): GameEvent[] {
-  return [...DEFAULT_EVENTS]
+// 处理选择结果
+export function processChoice(
+  _event: GameEvent,
+  choice: EventChoice,
+  resources: ResourceState,
+  vehicleDurability: number,
+  survivors: SurvivorState[]
+): {
+  resources: ResourceState
+  vehicleDurability: number
+  survivors: SurvivorState[]
+  moraleChange: number
+  spawnZombies: number
+  weatherChange: string | null
+  success: boolean
+} {
+  // 检查是否有成功/失败分支
+  if (choice.successChance !== undefined) {
+    const success = Math.random() * 100 < choice.successChance
+    const effects = success ? (choice.successEffects || []) : (choice.failEffects || [])
+    
+    return {
+      ...applyEventEffects(effects, resources, vehicleDurability, survivors),
+      success
+    }
+  }
+  
+  // 普通效果
+  return {
+    ...applyEventEffects(choice.effects, resources, vehicleDurability, survivors),
+    success: true
+  }
 }
 
-/**
- * 获取天气效果表（用于测试）
- */
-export function getWeatherEffects(): WeatherEffect[] {
-  return [...WEATHER_EFFECTS]
+// 更新事件状态
+export function updateEventState(
+  eventState: EventState,
+  event: GameEvent,
+  currentTime: number
+): EventState {
+  const newHistory = event.oneTime 
+    ? [...eventState.eventHistory, event.id]
+    : eventState.eventHistory
+    
+  const newCooldowns = event.cooldown
+    ? { ...eventState.eventCooldowns, [event.id]: currentTime }
+    : eventState.eventCooldowns
+    
+  return {
+    currentEvent: null,
+    eventHistory: newHistory,
+    lastEventTime: currentTime,
+    eventCooldowns: newCooldowns
+  }
 }

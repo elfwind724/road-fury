@@ -1,6 +1,6 @@
 /**
  * 幸存者系统
- * 负责幸存者招募、技能加成、士气管理
+ * 负责幸存者招募、技能加成、士气管理、性格互动
  */
 
 import type { SurvivorState, SurvivorSkill, SurvivorPersonality, FacilityType } from '@/types'
@@ -11,6 +11,69 @@ const MORALE_DECAY_RATE = 2
 const MORALE_LEAVE_THRESHOLD = 20
 // 离开概率（每次检查）
 const LEAVE_CHANCE = 0.1
+
+// 性格效果配置
+export const PERSONALITY_EFFECTS: Record<SurvivorPersonality, {
+  moraleModifier: number        // 士气变化率修正（每小时）
+  efficiencyModifier: number    // 工作效率修正
+  consumptionModifier: {        // 消耗修正
+    food?: number
+    water?: number
+    stamina?: number
+  }
+  socialModifier: number        // 社交影响（对其他幸存者士气的影响）
+  specialEffect?: string        // 特殊效果描述
+}> = {
+  optimist: {
+    moraleModifier: 2,
+    efficiencyModifier: 0,
+    consumptionModifier: {},
+    socialModifier: 5,          // 乐观者提升周围人士气
+    specialEffect: '全队士气+10%'
+  },
+  hardworker: {
+    moraleModifier: 0,
+    efficiencyModifier: 0.15,
+    consumptionModifier: { stamina: 0.1 },
+    socialModifier: 0,
+    specialEffect: '工作效率+15%, 体力消耗+10%'
+  },
+  frugal: {
+    moraleModifier: 0,
+    efficiencyModifier: 0,
+    consumptionModifier: { food: -0.1, water: -0.1 },
+    socialModifier: 0,
+    specialEffect: '资源消耗-10%'
+  },
+  coward: {
+    moraleModifier: -1,
+    efficiencyModifier: 0,
+    consumptionModifier: {},
+    socialModifier: -3,         // 胆小者降低周围人士气
+    specialEffect: '遇Boss士气-30'
+  },
+  glutton: {
+    moraleModifier: 1,          // 吃得多但开心
+    efficiencyModifier: 0,
+    consumptionModifier: { food: 0.3 },
+    socialModifier: 0,
+    specialEffect: '食物消耗+30%'
+  },
+  loner: {
+    moraleModifier: 0,
+    efficiencyModifier: 0,      // 基础效率在calculateEfficiency中处理
+    consumptionModifier: {},
+    socialModifier: -2,
+    specialEffect: '单独工作效率+20%, 与他人共处时效率-10%'
+  },
+  leader: {
+    moraleModifier: 1,
+    efficiencyModifier: 0,
+    consumptionModifier: {},
+    socialModifier: 8,          // 领袖大幅提升团队士气
+    specialEffect: '相邻设施效率+10%'
+  }
+}
 
 // 技能与设施匹配表
 const SKILL_FACILITY_MAP: Record<SurvivorSkill, FacilityType[]> = {
@@ -117,36 +180,63 @@ export function isSkillMatchingFacility(
 
 
 /**
- * 更新士气
- * 需求未满足时士气下降
+ * 更新士气 - 完善版
+ * 考虑需求、性格、社交互动
  */
 export function updateMorale(
   survivor: SurvivorState,
-  deltaHours: number
+  deltaHours: number,
+  allSurvivors?: SurvivorState[]
 ): SurvivorState {
   let moraleChange = 0
   
-  // 饥饿低于 30 时士气下降
+  // 基础需求影响
   if (survivor.hunger < 30) {
     moraleChange -= MORALE_DECAY_RATE * deltaHours
   }
-  
-  // 口渴低于 30 时士气下降
   if (survivor.thirst < 30) {
     moraleChange -= MORALE_DECAY_RATE * deltaHours
   }
-  
-  // 健康低于 50 时士气下降
   if (survivor.health < 50) {
     moraleChange -= MORALE_DECAY_RATE * deltaHours
   }
-  
-  // 性格影响
-  if (survivor.personality.includes('optimist')) {
-    moraleChange += 1 * deltaHours
+  if (survivor.stamina < 20) {
+    moraleChange -= MORALE_DECAY_RATE * 0.5 * deltaHours
   }
-  if (survivor.personality.includes('coward')) {
-    moraleChange -= 0.5 * deltaHours
+  
+  // 性格自身士气修正
+  for (const personality of survivor.personality) {
+    const effect = PERSONALITY_EFFECTS[personality]
+    if (effect) {
+      moraleChange += effect.moraleModifier * deltaHours
+    }
+  }
+  
+  // 社交互动影响（其他幸存者的性格对自己的影响）
+  if (allSurvivors && allSurvivors.length > 1) {
+    for (const other of allSurvivors) {
+      if (other.id === survivor.id) continue
+      
+      for (const personality of other.personality) {
+        const effect = PERSONALITY_EFFECTS[personality]
+        if (effect) {
+          // 社交影响按人数分摊
+          moraleChange += (effect.socialModifier / allSurvivors.length) * deltaHours
+        }
+      }
+    }
+    
+    // 孤僻者在人多时士气下降
+    if (survivor.personality.includes('loner') && allSurvivors.length > 2) {
+      moraleChange -= 2 * deltaHours
+    }
+  }
+  
+  // 幸福感影响士气
+  if (survivor.happiness > 70) {
+    moraleChange += 1 * deltaHours
+  } else if (survivor.happiness < 30) {
+    moraleChange -= 1 * deltaHours
   }
   
   const newMorale = Math.max(0, Math.min(100, survivor.morale + moraleChange))
@@ -155,6 +245,94 @@ export function updateMorale(
     ...survivor,
     morale: newMorale,
   }
+}
+
+/**
+ * 计算幸存者消耗修正
+ */
+export function getConsumptionModifier(survivor: SurvivorState): {
+  food: number
+  water: number
+  stamina: number
+} {
+  let foodMod = 1
+  let waterMod = 1
+  let staminaMod = 1
+  
+  for (const personality of survivor.personality) {
+    const effect = PERSONALITY_EFFECTS[personality]
+    if (effect?.consumptionModifier) {
+      if (effect.consumptionModifier.food) {
+        foodMod += effect.consumptionModifier.food
+      }
+      if (effect.consumptionModifier.water) {
+        waterMod += effect.consumptionModifier.water
+      }
+      if (effect.consumptionModifier.stamina) {
+        staminaMod += effect.consumptionModifier.stamina
+      }
+    }
+  }
+  
+  return { food: foodMod, water: waterMod, stamina: staminaMod }
+}
+
+/**
+ * 计算幸存者工作效率（考虑性格）
+ */
+export function calculateEfficiency(
+  survivor: SurvivorState,
+  hasCoworker: boolean
+): number {
+  let efficiency = 1.0
+  
+  // 技能等级加成
+  efficiency += survivor.skillLevel * 0.1
+  
+  // 士气影响
+  const moraleCoeff = Math.max(0.5, Math.min(1.5, survivor.morale / 100))
+  efficiency *= moraleCoeff
+  
+  // 体力影响
+  if (survivor.stamina < 20) {
+    efficiency *= 0.5
+  }
+  
+  // 性格效率修正
+  for (const personality of survivor.personality) {
+    const effect = PERSONALITY_EFFECTS[personality]
+    if (effect) {
+      efficiency *= (1 + effect.efficiencyModifier)
+    }
+    
+    // 孤僻者特殊处理
+    if (personality === 'loner') {
+      efficiency *= hasCoworker ? 0.9 : 1.2
+    }
+  }
+  
+  return efficiency
+}
+
+/**
+ * Boss战时性格影响
+ */
+export function applyBossEncounterEffect(survivors: SurvivorState[]): SurvivorState[] {
+  return survivors.map(survivor => {
+    let moraleChange = 0
+    
+    if (survivor.personality.includes('coward')) {
+      moraleChange -= 30  // 胆小者遇Boss士气-30
+    }
+    if (survivor.personality.includes('leader')) {
+      moraleChange += 10  // 领袖稳定军心
+    }
+    
+    return {
+      ...survivor,
+      morale: Math.max(0, Math.min(100, survivor.morale + moraleChange))
+    }
+  })
 }
 
 /**
