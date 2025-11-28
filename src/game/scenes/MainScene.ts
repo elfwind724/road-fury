@@ -1057,10 +1057,14 @@ export class MainScene extends Phaser.Scene {
 
   private getBossTint(bossType: BossType): number {
     const tints: Record<BossType, number> = {
-      tank: 0x8B4513,      // 棕色
-      spitter: 0x00FF00,   // 绿色
-      screamer: 0xFF00FF,  // 紫色
-      necromancer: 0x4B0082 // 靛蓝色
+      tank: 0x8B4513,       // 棕色
+      spitter: 0x00FF00,    // 绿色
+      screamer: 0xFF00FF,   // 紫色
+      necromancer: 0x4B0082,// 靛蓝色
+      juggernaut: 0x808080, // 灰色（装甲）
+      hunter: 0x800000,     // 深红色
+      hive_queen: 0xFFD700, // 金色
+      titan: 0xFF4500       // 橙红色
     }
     return tints[bossType] || 0xFF0000
   }
