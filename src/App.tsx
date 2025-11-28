@@ -4,15 +4,20 @@
 
 import { useState, useEffect } from 'react'
 import { useGameStore, useTutorialStore } from '@/store'
-import { MainMenu, GameContainer, Tutorial, TutorialHint } from '@/components'
+import { MainMenu, GameContainer, Tutorial, TutorialHint, GameOver } from '@/components'
 import { VehicleInterior } from '@/components/VehicleInterior'
 
 type GameScreen = 'menu' | 'road' | 'interior'
 
 function App() {
   const [screen, setScreen] = useState<GameScreen>('menu')
+
   const run = useGameStore((state) => state.run)
+  const startNewRun = useGameStore((state) => state.startNewRun)
   const { isActive: tutorialActive, startTutorial, currentStep, nextStep } = useTutorialStore()
+
+  // 检测游戏结束
+  const isGameOver = run && run.vehicle.durability <= 0
 
   // 如果有进行中的游戏，根据状态显示对应界面
   const currentScreen = run ? screen : 'menu'
@@ -61,6 +66,19 @@ function App() {
       {/* 新手引导弹窗 - 在公路和车内场景都显示 */}
       {tutorialActive && (currentScreen === 'road' || currentScreen === 'interior') && (
         <Tutorial onOpenInterior={handleOpenInterior} />
+      )}
+
+      {/* 游戏结束界面 */}
+      {isGameOver && (
+        <GameOver 
+          onRestart={() => {
+            startNewRun()
+            setScreen('road')
+          }}
+          onMainMenu={() => {
+            setScreen('menu')
+          }}
+        />
       )}
 
       <style>{`

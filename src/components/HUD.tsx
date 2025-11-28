@@ -65,6 +65,18 @@ export function HUD() {
         <span className="weather-name">{getWeatherName(run.weather.current)}</span>
       </div>
 
+      {/* 弹药显示 */}
+      <div className="ammo-indicator">
+        <span className="ammo-icon">🔫</span>
+        <span className="ammo-value">{Math.floor(run.resources.ammo)}</span>
+        {run.resources.ammo < 10 && <span className="ammo-warning">!</span>}
+      </div>
+
+      {/* 武器等级显示 */}
+      <div className="weapon-level">
+        <span>🎯 Lv.{run.weaponUpgrades?.machine_gun || 1}</span>
+      </div>
+
       {/* 底部操作提示 */}
       <div className="hud-bottom">
         <div className="lane-hint">
@@ -226,6 +238,49 @@ export function HUD() {
 
         .weather-name {
           color: #ccc;
+        }
+
+        .ammo-indicator {
+          position: absolute;
+          top: 130px;
+          right: 10px;
+          background: rgba(0, 0, 0, 0.6);
+          padding: 4px 10px;
+          border-radius: 12px;
+          font-size: 14px;
+          display: flex;
+          align-items: center;
+          gap: 4px;
+        }
+
+        .ammo-icon {
+          font-size: 14px;
+        }
+
+        .ammo-value {
+          font-weight: bold;
+          min-width: 24px;
+        }
+
+        .ammo-warning {
+          color: #ff4444;
+          font-weight: bold;
+          animation: blink 0.5s infinite;
+        }
+
+        @keyframes blink {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.3; }
+        }
+
+        .weapon-level {
+          position: absolute;
+          top: 160px;
+          right: 10px;
+          background: rgba(0, 0, 0, 0.6);
+          padding: 4px 10px;
+          border-radius: 12px;
+          font-size: 12px;
         }
       `}</style>
     </div>
